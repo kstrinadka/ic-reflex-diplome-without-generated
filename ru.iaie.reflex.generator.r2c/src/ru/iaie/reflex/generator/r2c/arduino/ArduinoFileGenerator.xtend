@@ -102,18 +102,18 @@ class ArduinoFileGenerator extends R2CFileGenerator {
 	'''
 	    
     override String getRootDirName() {
-		return "arduino"
+		return rootDirName
 	}
-	
+
 	new(Resource resource, IFileSystemAccess2 fsa) {
 		super(resource, fsa)
 	}
-	
+
 	override generateBuildFiles() {}
-	
+
 	override generatePlatformImplementations() {
 		val annotations = program.collectNamespaceAnnotations(ANNOTATION_NAMESPACE)
-		
+
 		val timerInitContent = annotations.containsKey(TIMER_INIT_ANNOTATION) ? annotations.get(TIMER_INIT_ANNOTATION) : DEFAULT_TIMER_INIT
 		val ioInitContent = annotations.containsKey(IO_INIT_ANNOTATION) ? annotations.get(IO_INIT_ANNOTATION) : DEFAULT_IO_INIT
 		val timerContent = annotations.containsKey(TIMER_ANNOTATION) ? annotations.get(TIMER_ANNOTATION) : DEFAULT_GET_TIME_IMPL
@@ -122,51 +122,51 @@ class ArduinoFileGenerator extends R2CFileGenerator {
 		val wordReadContent = annotations.containsKey(WORD_READ_ANNOTATION) ? annotations.get(WORD_READ_ANNOTATION) : DEFAULT_WORD_READ_CONTENT
 		val byteWriteContent = annotations.containsKey(BYTE_WRITE_ANNOTATION) ? annotations.get(BYTE_WRITE_ANNOTATION) : DEFAULT_BYTE_WRITE_CONTENT
 		val wordWriteContent = annotations.containsKey(WORD_WRITE_ANNOTATION) ? annotations.get(WORD_WRITE_ANNOTATION) : DEFAULT_WORD_WRITE_CONTENT
-		
+
 		val fileContent = '''
 		#include <avr/io.h>
 		#include <avr/interrupt.h>
 		#include "../lib/platform.h"
 		#include "../generated/xvar.h"
-		
+
 		// Atmega 368p
 		#ifndef F_CPU
 		#define F_CPU 16000000UL
 		#endif
-		
+
 		«globalContent»
-				
+
 		void init_time() {
 			«timerInitContent»
 			«CUR_TIME_NAME» = 0;
 			«NEXT_TIME_NAME» = 0;
 		}
-		
+
 		void init_io() {
 			«ioInitContent»
 		}
-		
+
 		INT32_U get_time() {
 			«timerContent»
 		}
-		
+
 		INT8 read_byte(int addr1, int addr2) {
 			«byteReadContent»
 		}
-		
+
 		int write_byte(int addr1, int addr2, INT8 data) {
 			«byteWriteContent»
 		}
-		
+
 		INT16 read_word(int addr1, int addr2) {
 			«wordReadContent»
 		}
-		
+
 		int write_word(int addr1, int addr2, INT16 data) {
 			«wordWriteContent»
 		}
 		'''
-		fsa.generateFile('''«rootDirName»/generated/platform.c''', fileContent)
+		fsa.generateFile('''«rootDirName»/arduino_platform/platform.c''', fileContent)
 	}
 	
 }

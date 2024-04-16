@@ -23,26 +23,32 @@ import ru.iaie.reflex.generator.r2c.util.LiteralGenerationUtil
 
 class R2CFileGenerator implements IFileGenerator {
 	protected String C_STANDART = "99";
-	protected String GENERATED_DIR_NAME = "generated"
-	 
-	// AST root 
+//	protected String GENERATED_DIR_NAME = "generated"
+	protected String rootDirName = "c-code"
+	protected String sourceFileName = "main"
+	protected String sourceFilePath = ""
+
+	// AST root
 	protected Program program
 	protected IFileSystemAccess2 fsa
-	
+
 	IReflexIdentifiersHelper identifiersHelper
 	PortGenerationHelper portGenerationHelper
 	ConstantGenerationHelper constGenerationHelper
 	VariableGenerationHelper varGenerationHelper
 
-	protected static String CLOCK_CONST_NAME = "_r_CLOCK" 
-	protected static String CUR_TIME_NAME = "_r_cur_time" 
-	protected static String NEXT_TIME_NAME = "_r_next_act_time" 
-	
+	protected static String CLOCK_CONST_NAME = "_r_CLOCK"
+	protected static String CUR_TIME_NAME = "_r_cur_time"
+	protected static String NEXT_TIME_NAME = "_r_next_act_time"
+
 	def String getRootDirName() {
-		return "c-code"
+		return rootDirName
 	}
 
 	new(Resource resource, IFileSystemAccess2 fsa) {
+		sourceFileName = resource.getURI().lastSegment.toString.replace(".rcs", "")	// Достаю название исходного rcs файла, чтобы создать директорию с тем же именем
+
+		rootDirName = sourceFileName
 		program = resource.getProgram()
 		this.fsa = fsa
 		identifiersHelper = new ReflexIdentifiersHelper
@@ -50,7 +56,7 @@ class R2CFileGenerator implements IFileGenerator {
 		constGenerationHelper = new ConstantGenerationHelper(identifiersHelper)
 		varGenerationHelper = new VariableGenerationHelper(identifiersHelper)
 	}
-	
+
 	override prepareForGeneration() {
 		for (resource : R2CResourceProvider.COMMON_RESOURCES) { // З: перезапись текстов-заготовок в директорию проекта
 			fsa.generateFile('''«rootDirName»/«resource»''', class.getResourceAsStream('''/resources/«resource»'''))
@@ -61,12 +67,19 @@ class R2CFileGenerator implements IFileGenerator {
 		var fileContent = '''
 			cmake_minimum_required(VERSION 3.15)
 			project(«program.name.toLowerCase»)
-			
+
 			set(CMAKE_C_STANDARD «C_STANDART»)
 			set(CMAKE_C_FLAGS "-Wall")
-			
-			add_executable(«program.name.toLowerCase» generated/main.c generated/proc.c lib/r_lib.c usr/usr.c generated/io.c generated/platform.c)
+
+
+			add_executable(«program.name.toLowerCase»
+			«rootDirName»/«sourceFileName».c
+			«rootDirName»/lib/r_cnst.h
+			«rootDirName»/lib/r_main.h
+			«rootDirName»/platform.c
+			)
 		'''
+
 		fsa.generateFile('''«rootDirName»/CMakeLists.txt''', fileContent)
 	}
 
@@ -79,7 +92,7 @@ class R2CFileGenerator implements IFileGenerator {
 				: outputVars.add(v)
 		]
 		return '''
-		
+
 		void input(void) {
 			«FOR inPort: program.ports.filter[type == PortType.INPUT]»
 				«portGenerationHelper.translateInputPortReading(inPort)»
@@ -88,7 +101,7 @@ class R2CFileGenerator implements IFileGenerator {
 		    	«portGenerationHelper.translateReadingFromInput(physVar)»
 		    «ENDFOR»
 		}
-		
+
 		void output(void) {
 			«FOR physVar : outputVars»
 				«portGenerationHelper.translateWritingToOutput(physVar)»
@@ -108,14 +121,14 @@ class R2CFileGenerator implements IFileGenerator {
 				: outputVars.add(v)
 		]
 		return '''
-		/*======= Generated Input ==========*/		
+		/*======= Generated Input ==========*/
 			«FOR inPort: program.ports.filter[type == PortType.INPUT]»
 				«portGenerationHelper.translateInputPortReading(inPort)»
 			«ENDFOR»
 		    «FOR physVar : inputVars»
 		    	«portGenerationHelper.translateReadingFromInput(physVar)»
 		    «ENDFOR»
-		/*======= End of Input ==========*/		
+		/*======= End of Input ==========*/
 		'''
 	}
 	override String generateOutput() {
@@ -127,20 +140,20 @@ class R2CFileGenerator implements IFileGenerator {
 				: outputVars.add(v)
 		]
 		return '''
-		/*======= Generated Output ==========*/		
+		/*======= Generated Output ==========*/
 			«FOR physVar : outputVars»
 				«portGenerationHelper.translateWritingToOutput(physVar)»
 		    «ENDFOR»
 			«FOR outPort: program.ports.filter[type == PortType.OUTPUT]»
 				«portGenerationHelper.translateOutputPortWriting(outPort)»
 			«ENDFOR»
-		/*======= End of Output ==========*/		
+		/*======= End of Output ==========*/
 		'''
 	}
-	
+
 // zyubin: создание platform.c файла, ищи "generatePlatformImplementations"
 	override generatePlatformImplementations() {
-		fsa.generateFile('''«rootDirName»/«GENERATED_DIR_NAME»/platform.c''', R2CResourceProvider.DUMMY_PLATFORM_IMPL)
+		fsa.generateFile('''«rootDirName»/platform.c''', R2CResourceProvider.DUMMY_PLATFORM_IMPL)
 	}
 
 	override String generateConstantDefinitions() {
@@ -148,18 +161,18 @@ class R2CFileGenerator implements IFileGenerator {
 			«generateConstants()»
 
 			«generateEnums()»
-			
+
 			«generateClockConst()»
 		'''
 	}
 
 	/*
-	 * ================================================ 
+	 * ================================================
 	 * ==== Gen Variables:
 	 * TimeVar
 	 * Global and shared
 	 * Ports images
-	 * ================================================ 
+	 * ================================================
 	 */
 	 override String generateVariableDefinitions() {
 		return '''
@@ -168,7 +181,7 @@ class R2CFileGenerator implements IFileGenerator {
 			«generatePorts(false)»
 		'''
 	}
-	
+
 
 	/*override String generateProcessDefinitions() {
 		return '''
@@ -177,9 +190,9 @@ class R2CFileGenerator implements IFileGenerator {
 			«ENDFOR»
 		''';
 	}*/
-	
+
 	override String generateProcessVariables() {
-		return ''' 
+		return '''
 «««			const uint8_t START = 0;
 «««			const uint8_t CONFIRMED = 253;
 «««			const uint8_t ERROR = 254;
@@ -189,17 +202,17 @@ class R2CFileGenerator implements IFileGenerator {
 		#define CONFIRMED = 253;
 		#define ERROR = 254;
 		#define STOP = 255;
-		
+
 		/* ===== process state vars ====== */
 		«FOR process : program.processes»
 			uint8_t _p_«process.name»_state;
 		«ENDFOR»
-			
+
 		/* ===== process timer vars ====== */
 		«FOR process : program.processes»
 			uint32_t _p_«process.name»_time;
 		«ENDFOR»
-			
+
 		/* ===== process states enumerators ====== */
 		«FOR process : program.processes»
 			enum _p_«process.name»_states {
@@ -228,15 +241,15 @@ class R2CFileGenerator implements IFileGenerator {
 			/*========= PROCESS INIT: ========*/
 			«FOR process : program.processes»
 				_p_«process.name»_state «IF (process.active == true)»= START;«ENDIF»«IF (process.active == false)»= STOP;«ENDIF»
-			«ENDFOR»			
+			«ENDFOR»
 			/*========= END OF PROCESSES INIT========*/
-		'''				
+		'''
 	}
-	
+
 	/*
-	 * ================================================ 
+	 * ================================================
 	 * =================== MAIN.C =====================
-	 * ================================================ 
+	 * ================================================
 	 */
 	override generateMain() {
 		val fileContent = '''
@@ -245,22 +258,22 @@ class R2CFileGenerator implements IFileGenerator {
 		// #include "../lib/platform.h"
 		#include "../lib/r_cnst.h" /* system constants */
 		#include "../lib/r_main.h" /* Common constants and files */
-		
+
 		// Atmega 368p frequency
 		#ifndef F_CPU
 		#define F_CPU 16000000UL
 		#endif
-				
+
 		INT32_U _r_cur_time;
 		INT32_U _r_next_act_time;
-		
-		
+
+
 		«generateVariableDefinitions()»
-		
+
 		«generateConstantDefinitions()»
 
 		«generateProcessVariables()»
-		
+
 		void setup() {   /* Init */
 «««			init_processes();
 «««			init_time();
@@ -290,13 +303,13 @@ class R2CFileGenerator implements IFileGenerator {
 				«generateOutput()»
 			}
 		}
-		
+
 «««		«generateIOFiles()»
-		
+
 «««		«generateProcessImplementations()»
 		'''
 
-		fsa.generateFile('''«rootDirName»/«GENERATED_DIR_NAME»/main.c''', fileContent)
+		fsa.generateFile('''«rootDirName»/«sourceFileName».c''', fileContent)
 	}
 	
 		
