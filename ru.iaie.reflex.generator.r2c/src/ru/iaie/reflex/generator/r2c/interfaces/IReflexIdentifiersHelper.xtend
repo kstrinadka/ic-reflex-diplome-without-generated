@@ -1,12 +1,13 @@
 package ru.iaie.reflex.generator.r2c.interfaces;
 
+import ru.iaie.reflex.reflex.ArraySpecificationInit
 import ru.iaie.reflex.reflex.Const
 import ru.iaie.reflex.reflex.Enum
-import ru.iaie.reflex.reflex.Process
-import ru.iaie.reflex.reflex.Port
 import ru.iaie.reflex.reflex.EnumMember
 import ru.iaie.reflex.reflex.GlobalVariable
 import ru.iaie.reflex.reflex.IdReference
+import ru.iaie.reflex.reflex.Port
+import ru.iaie.reflex.reflex.Process
 import ru.iaie.reflex.reflex.ProcessVariable
 
 interface IReflexIdentifiersHelper {
@@ -16,7 +17,8 @@ interface IReflexIdentifiersHelper {
 	def String getPortId(Port p)
 	def String getEnumId(Enum en)
 	def String getEnumMemberId(EnumMember em)
-	def String getGlobalVariableId(GlobalVariable v) 
+	def String getGlobalVariableId(GlobalVariable v)
+	def String getArrayGlobalVariableId(ArraySpecificationInit v)
 	
 	def String getMapping(IdReference original)
 }

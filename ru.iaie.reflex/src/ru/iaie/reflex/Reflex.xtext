@@ -45,7 +45,7 @@ ProcessVariable:
 	(PhysicalVariable | ProgramVariable) (shared?="shared")?;
 
 GlobalVariable:
-	(PhysicalVariable | ProgramVariable) ";";
+	(PhysicalVariable | ProgramVariable | ArraySpecificationInit) ";";
 
 PhysicalVariable:
 	type=Type name=ID "=" mapping=PortMapping;
@@ -82,17 +82,17 @@ EnumMember:
 
 	// Statements + C code insertion
 Statement:
-	{Statement} ";" | CompoundStatement | 
+	{Statement} ";" | CompoundStatement |
 	StartProcStat | StopProcStat | ErrorStat | RestartStat | ResetStat
 	| SetStateStat | IfElseStat | SwitchStat | Expression ";" | C_code;
 
 StatementSequence:
 	{StatementSequence} statements+=Statement*;
-	
+
 // C code insertion
 C_code:
      c_code += C_PHRASE;
-    
+
 terminal C_PHRASE:
     '$' (!'\n')* ('\n');
 // +  '$' ( '\\' . /* 'b'|'t'|'n'|'f'|'r'|'u'|'$'|"'"|'\\' */ | !('\\'|'$') )* '$';
@@ -141,7 +141,7 @@ SetStateStat:
 	{SetStateStat} "set" ((next?="next" "state") | ("state" state=[State])) ";";
 
 IdReference:
-	PhysicalVariable | ProgramVariable | EnumMember | Const;
+	PhysicalVariable | ProgramVariable | EnumMember | Const | ArrayVariable;
 
 	// Expressions
 InfixOp:
@@ -160,7 +160,7 @@ enum StateQualifier:
 	ACTIVE="active" | INACTIVE="inactive" | STOP="stop" | ERROR="error";
 
 PrimaryExpression:
-	reference=[IdReference] | {PrimaryExpression} integer=INTEGER | {PrimaryExpression} floating=FLOAT |
+	reference=[IdReference] | {PrimaryExpression} integer=INTEGER | {PrimaryExpression} floating=FLOAT | array=ArrayVariable |
 	{PrimaryExpression} bool=BOOL_LITERAL | {PrimaryExpression} time=TIME | "(" nestedExpr=Expression ")";
 
 UnaryExpression:
@@ -208,7 +208,26 @@ AssignmentExpression:
 	(assignVar=[IdReference] assignOp=AssignOperator)? expr=LogicalOrExpression;
 
 Expression:
-	AssignmentExpression;
+	AssignmentExpression | ArrayAssignmentStatement;
+
+	/* ======================= START Array ======================= */
+
+ArrayAssignmentStatement:
+	(array=ArrayVariable) '=' value=Expression;
+
+ArrayVariable:
+	name=ID '[' index=INTEGER ']';
+
+
+ArraySpecificationInit:
+	type=Type 'ARRAY' name=ID
+	'[' (size=INTEGER | '*') ']'
+	('=' values=ArrayInitialization)?;
+
+ArrayInitialization :
+	'{' elements+=Expression (',' elements+=Expression)* '}';
+
+/* ======================= END Array ======================= */
 
 enum InfixPostfixOp:
 	INC="++" | DEC="--";
@@ -253,7 +272,8 @@ terminal BIT_AND:
 	// Types
 enum Type:
 	VOID_C_TYPE="void" | FLOAT="float" | DOUBLE="double" | INT8="int8" | INT8_U="uint8" | INT16="int16" |
-	INT16_U="uint16" | INT32="int32" | INT32_U="uint32" | INT64="int64" | INT64_U="uint64" | BOOL="bool" | TIME="time";
+	INT16_U="uint16" | INT32="int32" | INT32_U="uint32" | INT64="int64" | INT64_U="uint64" | BOOL="bool" | TIME="time"
+	;
 
 	// Literals
 terminal INTEGER:

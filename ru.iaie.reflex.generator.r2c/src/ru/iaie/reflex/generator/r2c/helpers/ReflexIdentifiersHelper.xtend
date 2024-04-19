@@ -1,21 +1,23 @@
 package ru.iaie.reflex.generator.r2c.helpers
 
-import ru.iaie.reflex.reflex.Process
+import java.util.HashMap
+import java.util.Map
+import ru.iaie.reflex.generator.r2c.interfaces.IReflexIdentifiersHelper
+import ru.iaie.reflex.reflex.ArraySpecificationInit
 import ru.iaie.reflex.reflex.Const
 import ru.iaie.reflex.reflex.Enum
 import ru.iaie.reflex.reflex.EnumMember
 import ru.iaie.reflex.reflex.GlobalVariable
-import java.util.Map
-import java.util.HashMap
 import ru.iaie.reflex.reflex.IdReference
-import ru.iaie.reflex.reflex.ProcessVariable
-import static extension ru.iaie.reflex.utils.ReflexModelUtil.*
-import static extension org.eclipse.xtext.EcoreUtil2.*
 import ru.iaie.reflex.reflex.PhysicalVariable
-import ru.iaie.reflex.reflex.ProgramVariable
 import ru.iaie.reflex.reflex.Port
 import ru.iaie.reflex.reflex.PortType
-import ru.iaie.reflex.generator.r2c.interfaces.IReflexIdentifiersHelper
+import ru.iaie.reflex.reflex.Process
+import ru.iaie.reflex.reflex.ProcessVariable
+import ru.iaie.reflex.reflex.ProgramVariable
+
+import static extension org.eclipse.xtext.EcoreUtil2.*
+import static extension ru.iaie.reflex.utils.ReflexModelUtil.*
 
 class ReflexIdentifiersHelper implements IReflexIdentifiersHelper {
 	val Map<String, Map<String, String>> procVarIdentifiers = newHashMap()
@@ -92,12 +94,26 @@ class ReflexIdentifiersHelper implements IReflexIdentifiersHelper {
 	}
 
 	override getGlobalVariableId(GlobalVariable v) {
+
 		val key = v.name
 		if (globalVarIdentifiers.containsKey(key)) {
 			return globalVarIdentifiers.get(key)
 		} else {
 //			val value = '''_g_«v.name»''' zyubin
 			val value = '''«v.name»'''
+			globalVarIdentifiers.put(key, value)
+			return value
+		}
+	}
+
+	override getArrayGlobalVariableId(ArraySpecificationInit array) {
+
+		val key = array.name
+		if (globalVarIdentifiers.containsKey(key)) {
+			return globalVarIdentifiers.get(key)
+		} else {
+
+			val value = ArrayGenerationHelper.getArrayRepresentation(array)
 			globalVarIdentifiers.put(key, value)
 			return value
 		}
